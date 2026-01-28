@@ -210,7 +210,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     .btn:active{ transform: translateY(1px); }
-
+    <div class="footer" id="pwaStatus">PWA: checking...</div>
     @media (max-width: 360px){
       .grid{ grid-template-columns: repeat(2, 1fr); }
       .tile{ min-height:78px; }
@@ -334,11 +334,24 @@
     });
 
     // ✅ PWA: Register Service Worker (VERY IMPORTANT)
-    if ("serviceWorker" in navigator){
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js");
-      });
+    const pwaStatus = document.getElementById("pwaStatus");
+
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", async () => {
+    try{
+      const reg = await navigator.serviceWorker.register("./sw.js");
+      pwaStatus.textContent = "PWA: Service Worker registered ✅";
+
+      // Wait until it becomes active
+      await navigator.serviceWorker.ready;
+      pwaStatus.textContent = "PWA: Service Worker active ✅ (Install should appear)";
+    }catch(err){
+      pwaStatus.textContent = "PWA: Service Worker FAILED ❌ " + err;
     }
+  });
+} else {
+  pwaStatus.textContent = "PWA: Service Worker not supported ❌";
+}
 
     // ✅ PWA: Install button handling
     let deferredPrompt = null;
