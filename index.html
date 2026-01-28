@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>Countdown PWA</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <style>
+    :root{
+      --bg1:#0b1220;
+      --bg2:#121a2e;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.06);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --border: rgba(255,255,255,.14);
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius: 22px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100svh;
+      display:grid;
+      place-items:center;
+      padding:18px;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans";
+      background:
+        radial-gradient(1200px 700px at 15% 10%, #2b7bff33 0%, transparent 60%),
+        radial-gradient(1000px 600px at 85% 20%, #a855f733 0%, transparent 55%),
+        radial-gradient(900px 700px at 40% 95%, #22c55e26 0%, transparent 55%),
+        linear-gradient(160deg, var(--bg1), var(--bg2));
+    }
+    .wrap{ width:min(560px, 100%); }
+    .card{
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:18px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:relative;
+    }
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background: linear-gradient(90deg, #60a5fa55, #a78bfa55, #34d39955);
+      filter: blur(22px);
+      opacity:.35;
+      z-index:0;
+    }
+    .top{
+      position:relative;
+      z-index:1;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .title{
+      margin:0;
+      font-size: clamp(18px, 4.5vw, 22px);
+      letter-spacing:.2px;
+      line-height:1.25;
+    }
+    .subtitle{
+      margin:6px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .badge{
+      position:relative;
+      z-index:1;
+      white-space:nowrap;
+      font-size:12px;
+      color:rgba(255,255,255,.85);
+      border:1px solid var(--border);
+      padding:8px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.18);
+    }
+
+    /* Days + HH:MM:SS tiles */
+    .grid{
+      position:relative;
+      z-index:1;
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+    }
+    .tile{
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:12px 10px;
+      background: rgba(0,0,0,.18);
+      text-align:center;
+      min-height:82px;
+      display:grid;
+      place-items:center;
+    }
+    .num{
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(22px, 6vw, 32px);
+      font-weight: 800;
+      line-height:1;
+      margin:0;
+    }
+    .lbl{
+      margin-top:6px;
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.3px;
+    }
+
+    /* Milliseconds row */
+    .msRow{
+      position:relative;
+      z-index:1;
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      padding:12px 12px;
+      border:1px solid var(--border);
+      border-radius:18px;
+      background: rgba(0,0,0,.18);
+    }
+    .msLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pill{
+      font-variant-numeric: tabular-nums;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      padding:8px 12px;
+      border-radius:999px;
+      color: rgba(255,255,255,.9);
+      font-weight: 800;
+      letter-spacing:.3px;
+      min-width: 96px;
+      text-align:center;
+    }
+
+    .progressWrap{
+      width:100%;
+      margin-top:10px;
+      position:relative;
+      z-index:1;
+    }
+    .bar{
+      height:10px;
+      width:100%;
+      background: rgba(255,255,255,.08);
+      border:1px solid var(--border);
+      border-radius:999px;
+      overflow:hidden;
+    }
+    .fill{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, #60a5fa, #a78bfa, #34d399);
+      border-radius:999px;
+      transition: width .2s linear;
+    }
+
+    .footer{
+      position:relative;
+      z-index:1;
+      margin-top:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size:12px;
+    }
+
+    .btnRow{
+      position:relative;
+      z-index:1;
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .btn{
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.9);
+      padding:10px 12px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    @media (max-width: 360px){
+      .grid{ grid-template-columns: repeat(2, 1fr); }
+      .tile{ min-height:78px; }
+      .pill{ min-width: 88px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div>
+          <h1 class="title">❤️ Waiting For You ❤️</h1>
+          <p class="subtitle" id="meta">Target: 09-02-2026 00:00:00</p>
+        </div>
+        <div class="badge" id="status">🕐</div>
+      </div>
+
+      <!-- DAYS / H / M / S -->
+      <div class="grid">
+        <div class="tile">
+          <div>
+            <p class="num" id="d">--</p>
+            <div class="lbl">Days</div>
+          </div>
+        </div>
+        <div class="tile">
+          <div>
+            <p class="num" id="h">--</p>
+            <div class="lbl">Hours</div>
+          </div>
+        </div>
+        <div class="tile">
+          <div>
+            <p class="num" id="m">--</p>
+            <div class="lbl">Minutes</div>
+          </div>
+        </div>
+        <div class="tile">
+          <div>
+            <p class="num" id="s">--</p>
+            <div class="lbl">Seconds</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Milliseconds -->
+      <div class="msRow">
+        <div class="msLeft">⚡ Milliseconds</div>
+        <div class="pill" id="ms">---</div>
+      </div>
+
+      <!-- Progress (अब 1 घंटे का) -->
+      <div class="progressWrap">
+        <div class="bar"><div class="fill" id="fill"></div></div>
+      </div>
+
+      <div class="footer">
+        <div id="nowTxt">Now: --</div>
+        <div id="leftTxt">Left: --</div>
+      </div>
+
+      <div class="btnRow">
+        <button class="btn" id="copyLeft">Copy Left</button>
+        <button class="btn" id="installBtn" style="display:none;">Install App</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== CONFIG ======
+    // Target: 9 Feb 2026 00:00:00 (Local device time)
+    const target = new Date(2026, 1, 9, 0, 0, 0, 0); // month 0-based => 1 = Feb
+
+    // ====== Helpers ======
+    const $ = (id) => document.getElementById(id);
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const pad3 = (n) => String(n).padStart(3, "0");
+
+    function fmt(dt){
+      const d = pad2(dt.getDate());
+      const mo = pad2(dt.getMonth()+1);
+      const y = dt.getFullYear();
+      const hh = pad2(dt.getHours());
+      const mm = pad2(dt.getMinutes());
+      const ss = pad2(dt.getSeconds());
+      return `${d}-${mo}-${y} ${hh}:${mm}:${ss}`;
+    }
+
+    function update(){
+      const now = new Date();
+      let diff = target - now;
+
+      $("nowTxt").textContent = `Now: ${fmt(now)}`;
+
+      if (diff <= 0){
+        $("status").textContent = "DONE";
+        $("d").textContent = "0";
+        $("h").textContent = "0";
+        $("m").textContent = "0";
+        $("s").textContent = "0";
+        $("ms").textContent = "000";
+        $("leftTxt").textContent = "Left: 0d 00:00:00.000";
+        $("fill").style.width = "100%";
+        return;
+      }
+
+      // Countdown parts
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      const milliseconds = diff % 1000;
+
+      $("d").textContent = days;
+      $("h").textContent = hours;
+      $("m").textContent = minutes;
+      $("s").textContent = seconds;
+      $("ms").textContent = pad3(milliseconds);
+
+      const left = `${days}d ${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}.${pad3(milliseconds)}`;
+      $("leftTxt").textContent = `Left: ${left}`;
+
+      // ✅ Progress bar = 1 hour (हर घंटे auto reset)
+      const hourStart = new Date(now);
+      hourStart.setMinutes(0, 0, 0);
+
+      const elapsedInHour = now - hourStart; // ms
+      const hourProgress = (elapsedInHour / (60 * 60 * 1000)) * 100;
+
+      $("fill").style.width = `${Math.min(100, Math.max(0, hourProgress)).toFixed(2)}%`;
+
+      requestAnimationFrame(update); // smooth on mobile
+    }
+    update();
+
+    // Copy Left button
+    $("copyLeft").addEventListener("click", async () => {
+      try{
+        await navigator.clipboard.writeText($("leftTxt").textContent);
+        $("copyLeft").textContent = "Copied ✅";
+        setTimeout(()=> $("copyLeft").textContent = "Copy Left", 1000);
+      }catch(e){
+        alert("Copy nahi hua (browser restriction).");
+      }
+    });
+
+    // ====== PWA: Service Worker Register ======
+    if ("serviceWorker" in navigator){
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js");
+      });
+    }
+
+    // ====== PWA: Install prompt button ======
+    let deferredPrompt = null;
+    const installBtn = $("installBtn");
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = "inline-block";
+    });
+
+    installBtn.addEventListener("click", async () => {
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installBtn.style.display = "none";
+    });
+  </script>
+</body>
+</html>
