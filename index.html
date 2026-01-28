@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 
-  <!-- PWA MUST -->
+  <!-- ✅ PWA MUST -->
   <meta name="theme-color" content="#0b1220" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 
   <title>Waiting Countdown</title>
 
@@ -38,6 +38,7 @@
         radial-gradient(900px 700px at 40% 95%, #22c55e26 0%, transparent 55%),
         linear-gradient(160deg, var(--bg1), var(--bg2));
     }
+
     .wrap{ width:min(560px, 100%); }
     .card{
       background: linear-gradient(180deg, var(--card), var(--card2));
@@ -175,7 +176,7 @@
       width:0%;
       background: linear-gradient(90deg, #60a5fa, #a78bfa, #34d399);
       border-radius:999px;
-      transition: width .2s linear;
+      transition: width .18s linear;
     }
 
     .footer{
@@ -210,7 +211,20 @@
       -webkit-tap-highlight-color: transparent;
     }
     .btn:active{ transform: translateY(1px); }
-    <div class="footer" id="pwaStatus">PWA: checking...</div>
+
+    .pwaLine{
+      position:relative;
+      z-index:1;
+      margin-top:10px;
+      font-size:12px;
+      color: var(--muted);
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      word-break: break-word;
+    }
+
     @media (max-width: 360px){
       .grid{ grid-template-columns: repeat(2, 1fr); }
       .tile{ min-height:78px; }
@@ -224,7 +238,7 @@
     <div class="card">
       <div class="top">
         <div>
-          <h1 class="title">❤️ Waiting For You ❤️</h1>
+          <h1 class="title">⏳ Countdown to 9 Feb 2026</h1>
           <p class="subtitle">Target: 09-02-2026 00:00:00</p>
         </div>
         <div class="badge" id="status">LIVE</div>
@@ -242,7 +256,7 @@
         <div class="pill" id="ms">---</div>
       </div>
 
-      <!-- Progress bar = 1 hour -->
+      <!-- ✅ Progress bar = 1 hour (हर घंटे reset) -->
       <div class="progressWrap">
         <div class="bar"><div class="fill" id="fill"></div></div>
       </div>
@@ -256,11 +270,16 @@
         <button class="btn" id="copyLeft">Copy Left</button>
         <button class="btn" id="installBtn" style="display:none;">Install App</button>
       </div>
+
+      <!-- ✅ PWA debug line (remove later if you want) -->
+      <div class="pwaLine" id="pwaStatus">PWA: checking…</div>
     </div>
   </div>
 
   <script>
-    // ===== CONFIG =====
+    // =======================
+    // Countdown CONFIG
+    // =======================
     const target = new Date(2026, 1, 9, 0, 0, 0, 0); // 9 Feb 2026 00:00:00 (local)
 
     const $ = (id) => document.getElementById(id);
@@ -279,7 +298,7 @@
 
     function update(){
       const now = new Date();
-      let diff = target - now;
+      const diff = target - now;
 
       $("nowTxt").textContent = `Now: ${fmt(now)}`;
 
@@ -295,7 +314,6 @@
         return;
       }
 
-      // Countdown
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
       const minutes = Math.floor((diff / (1000 * 60)) % 60);
@@ -308,10 +326,10 @@
       $("s").textContent = seconds;
       $("ms").textContent = pad3(milliseconds);
 
-      const left = `${days}d ${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}.${pad3(milliseconds)}`;
-      $("leftTxt").textContent = `Left: ${left}`;
+      $("leftTxt").textContent =
+        `Left: ${days}d ${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}.${pad3(milliseconds)}`;
 
-      // ✅ Progress bar = 1 hour (हर घंटे reset)
+      // ✅ 1 hour progress bar (0% at HH:00:00, 100% at HH:59:59.999)
       const hourStart = new Date(now);
       hourStart.setMinutes(0, 0, 0);
       const elapsedInHour = now - hourStart;
@@ -333,42 +351,71 @@
       }
     });
 
-    // ✅ PWA: Register Service Worker (VERY IMPORTANT)
-    const pwaStatus = document.getElementById("pwaStatus");
-
-if ("serviceWorker" in navigator){
-  window.addEventListener("load", async () => {
-    try{
-      const reg = await navigator.serviceWorker.register("./sw.js");
-      pwaStatus.textContent = "PWA: Service Worker registered ✅";
-
-      // Wait until it becomes active
-      await navigator.serviceWorker.ready;
-      pwaStatus.textContent = "PWA: Service Worker active ✅ (Install should appear)";
-    }catch(err){
-      pwaStatus.textContent = "PWA: Service Worker FAILED ❌ " + err;
-    }
-  });
-} else {
-  pwaStatus.textContent = "PWA: Service Worker not supported ❌";
-}
-
-    // ✅ PWA: Install button handling
-    let deferredPrompt = null;
+    // =======================
+    // PWA: Install + Diagnostics
+    // =======================
+    const pwaStatus = $("pwaStatus");
     const installBtn = $("installBtn");
+    let deferredPrompt = null;
+
+    function setStatus(msg){ pwaStatus.textContent = msg; }
+
+    async function checkUrl(path){
+      try{
+        const res = await fetch(path, { cache: "no-store" });
+        return `${path}→${res.status}`;
+      }catch(e){
+        return `${path}→ERR`;
+      }
+    }
 
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredPrompt = e;
       installBtn.style.display = "inline-block";
+      setStatus("PWA: Install prompt ready ✅ (Install button enabled)");
     });
 
     installBtn.addEventListener("click", async () => {
-      if(!deferredPrompt) return;
+      if(!deferredPrompt){
+        setStatus("PWA: Install prompt not available ❌ (try Chrome menu ⋮ → Add to Home screen)");
+        return;
+      }
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;
       deferredPrompt = null;
       installBtn.style.display = "none";
+      setStatus("PWA: Install attempted ✅ (check home screen)");
+    });
+
+    window.addEventListener("load", async () => {
+      // 1) Check files reachable (case-sensitive on GitHub Pages)
+      const a = await checkUrl("./manifest.webmanifest");
+      const b = await checkUrl("./sw.js");
+      const c = await checkUrl("./icons/icon-192.png");
+      const d = await checkUrl("./icons/icon-512.png");
+
+      // 2) Register service worker
+      if(!("serviceWorker" in navigator)){
+        setStatus("PWA: ServiceWorker not supported ❌");
+        return;
+      }
+
+      try{
+        await navigator.serviceWorker.register("./sw.js");
+        await navigator.serviceWorker.ready;
+
+        const isHttps = location.protocol === "https:" || location.hostname === "localhost";
+        const hasManifest = !!document.querySelector('link[rel="manifest"]');
+        const standalone = window.matchMedia("(display-mode: standalone)").matches;
+
+        setStatus(
+          `PWA OK ✅ | SW active ✅ | HTTPS:${isHttps} | ManifestLink:${hasManifest} | Standalone:${standalone} | Files: ${a}, ${b}, ${c}, ${d} | ` +
+          `If install not popup: Chrome menu (⋮) → Install app / Add to Home screen`
+        );
+      }catch(err){
+        setStatus("PWA: SW register FAILED ❌ " + err);
+      }
     });
   </script>
 </body>
